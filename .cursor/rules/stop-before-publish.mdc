@@ -1,0 +1,18 @@
+---
+description: Stop CursorUsage.exe before every local publish or release
+alwaysApply: true
+---
+
+# Stop the running EXE before publish
+
+`CursorUsage.exe` locks `dist/CursorUsage.exe` while it is running. `dotnet publish` then fails.
+
+Before **every** local publish, rebuild, or release prep:
+
+1. Stop the running process (`Stop-Process -Name CursorUsage -ErrorAction SilentlyContinue`).
+2. Then `dotnet publish` / tag / push.
+3. After a local try, start `dist\CursorUsage.exe` again.
+
+GitHub Actions builds on a runner and does not need the local EXE stopped. Stop it anyway when this machine will also publish to `dist/`.
+
+Do not attach a locally built EXE to a GitHub Release. CI on a `v*` tag is the only ship path.
