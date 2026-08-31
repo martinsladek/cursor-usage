@@ -14,7 +14,10 @@ sealed class DashboardForm : Form
     private readonly SparklineBox _sparkline;
     private readonly Label _sparkCaption;
     private readonly Label _lag;
-    private readonly Label _tokens;
+    private readonly Label _tokenCaption;
+    private readonly Label _tokenInput;
+    private readonly Label _tokenOutput;
+    private readonly Label _tokenCache;
     private readonly Label _onDemand;
     private bool _closeOnDeactivate;
 
@@ -29,15 +32,18 @@ sealed class DashboardForm : Form
         ShowIcon = false;
         AutoScaleMode = AutoScaleMode.Font;
         Font = SystemFonts.MessageBoxFont;
-        ClientSize = new Size(320, 390);
+        ClientSize = new Size(320, 470);
         KeyPreview = true;
         BackColor = SystemColors.Window;
+        Location = new Point(-32000, -32000);
+
+        int chapterGap = Math.Max(16, Font.Height);
 
         var layout = new TableLayoutPanel
         {
             Dock = DockStyle.Fill,
             ColumnCount = 1,
-            RowCount = 11,
+            RowCount = 16,
             Padding = new Padding(16, 14, 16, 12)
         };
         layout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
@@ -61,19 +67,19 @@ sealed class DashboardForm : Form
         {
             AutoSize = true,
             ForeColor = SystemColors.GrayText,
-            Margin = new Padding(0, 0, 0, 12)
+            Margin = new Padding(0, 0, 0, 4)
         };
 
-        _autoLabel = new Label { AutoSize = true, Margin = new Padding(0, 0, 0, 2) };
-        _autoBar = new PercentBar { Height = 10, Margin = new Padding(0, 0, 0, 10), Dock = DockStyle.Top };
+        _autoLabel = new Label { AutoSize = true, Margin = new Padding(0, chapterGap, 0, 2) };
+        _autoBar = new PercentBar { Height = 10, Margin = new Padding(0, 0, 0, 8), Dock = DockStyle.Top };
         _apiLabel = new Label { AutoSize = true, Margin = new Padding(0, 0, 0, 2) };
-        _apiBar = new PercentBar { Height = 10, Margin = new Padding(0, 0, 0, 12), Dock = DockStyle.Top };
+        _apiBar = new PercentBar { Height = 10, Margin = new Padding(0, 0, 0, 0), Dock = DockStyle.Top };
 
         _sparkCaption = new Label
         {
             Text = Strings.RecentIncluded,
             AutoSize = true,
-            Margin = new Padding(0, 0, 0, 4)
+            Margin = new Padding(0, chapterGap, 0, 4)
         };
         _sparkline = new SparklineBox { Height = 48, Margin = new Padding(0, 0, 0, 4), Dock = DockStyle.Top };
         _lag = new Label
@@ -81,22 +87,24 @@ sealed class DashboardForm : Form
             Text = Strings.LagNote,
             AutoSize = true,
             ForeColor = SystemColors.GrayText,
-            Margin = new Padding(0, 0, 0, 12)
+            Margin = new Padding(0, 0, 0, 0)
         };
 
-        _tokens = new Label
+        _tokenCaption = new Label
         {
+            Text = Strings.TokensRecent,
             AutoSize = true,
-            MaximumSize = new Size(280, 0),
-            Margin = new Padding(0, 0, 0, 10)
+            Margin = new Padding(0, chapterGap, 0, 4)
         };
+        _tokenInput = new Label { AutoSize = true, Margin = new Padding(0, 0, 0, 2) };
+        _tokenOutput = new Label { AutoSize = true, Margin = new Padding(0, 0, 0, 2) };
+        _tokenCache = new Label { AutoSize = true, Margin = new Padding(0, 0, 0, 4) };
 
         _onDemand = new Label
         {
             AutoSize = true,
-            MaximumSize = new Size(280, 0),
             ForeColor = SystemColors.GrayText,
-            Margin = new Padding(0, 0, 0, 10)
+            Margin = new Padding(0, 8, 0, 10)
         };
 
         var link = new LinkLabel
@@ -117,17 +125,12 @@ sealed class DashboardForm : Form
         layout.Controls.Add(_sparkCaption, 0, 7);
         layout.Controls.Add(_sparkline, 0, 8);
         layout.Controls.Add(_lag, 0, 9);
-
-        var bottom = new TableLayoutPanel
-        {
-            ColumnCount = 1,
-            AutoSize = true,
-            Dock = DockStyle.Fill
-        };
-        bottom.Controls.Add(_tokens, 0, 0);
-        bottom.Controls.Add(_onDemand, 0, 1);
-        bottom.Controls.Add(link, 0, 2);
-        layout.Controls.Add(bottom, 0, 10);
+        layout.Controls.Add(_tokenCaption, 0, 10);
+        layout.Controls.Add(_tokenInput, 0, 11);
+        layout.Controls.Add(_tokenOutput, 0, 12);
+        layout.Controls.Add(_tokenCache, 0, 13);
+        layout.Controls.Add(_onDemand, 0, 14);
+        layout.Controls.Add(link, 0, 15);
 
         Controls.Add(layout);
 
@@ -139,12 +142,7 @@ sealed class DashboardForm : Form
 
         Shown += (_, _) =>
         {
-            PositionNearCursor();
-            BeginInvoke(() =>
-            {
-                _closeOnDeactivate = true;
-                Activate();
-            });
+            BeginInvoke(() => _closeOnDeactivate = true);
         };
 
         Deactivate += (_, _) =>
@@ -166,7 +164,7 @@ sealed class DashboardForm : Form
             _autoBar.Value = null;
             _apiBar.Value = null;
             _sparkline.Apply(snapshot);
-            _tokens.Text = "";
+            ClearTokenLines();
             _onDemand.Text = "";
             return;
         }
@@ -181,7 +179,7 @@ sealed class DashboardForm : Form
             _autoBar.Value = null;
             _apiBar.Value = null;
             _sparkline.Apply(snapshot);
-            _tokens.Text = "";
+            ClearTokenLines();
             _onDemand.Text = "";
             return;
         }
@@ -206,16 +204,25 @@ sealed class DashboardForm : Form
         _apiBar.Value = snapshot.ApiPercent;
         _sparkline.Apply(snapshot);
 
-        _tokens.Text =
-            $"{Strings.TokensRecent}: {Strings.TokenInput} {FormatCount(snapshot.InputTokens)} · " +
-            $"{Strings.TokenOutput} {FormatCount(snapshot.OutputTokens)} · " +
-            $"{Strings.TokenCache} {FormatCount(snapshot.CacheTokens)}";
+        _tokenInput.Text = $"{Strings.TokenInput}  {FormatCount(snapshot.InputTokens)}";
+        _tokenOutput.Text = $"{Strings.TokenOutput}  {FormatCount(snapshot.OutputTokens)}";
+        _tokenCache.Text = $"{Strings.TokenCache}  {FormatCount(snapshot.CacheTokens)}";
 
         _onDemand.Text = snapshot.OnDemandEnabled is true ? Strings.OnDemandOn : Strings.OnDemandOff;
     }
 
-    private void PositionNearCursor()
+    private void ClearTokenLines()
     {
+        _tokenInput.Text = $"{Strings.TokenInput}  —";
+        _tokenOutput.Text = $"{Strings.TokenOutput}  —";
+        _tokenCache.Text = $"{Strings.TokenCache}  —";
+    }
+
+    public void PlaceNearPointer()
+    {
+        if (!IsHandleCreated)
+            _ = Handle;
+
         Point pos = Cursor.Position;
         Rectangle area = Screen.FromPoint(pos).WorkingArea;
         int x = pos.X - Width / 2;

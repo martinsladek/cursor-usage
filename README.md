@@ -4,7 +4,7 @@ A Windows 10 system tray utility that shows current Cursor included usage, the w
 
 - **Icon** — Task Manager-style sparkline of recent included-usage burn; color follows **Included in Pro %**
 - **Hover** — Included / Auto / API percentages
-- **Left click** — mini-dashboard (headline %, two pools, larger sparkline, recent tokens)
+- **Left click** — toggle the mini-dashboard (headline %, two pools, larger sparkline, recent tokens)
 - **Right click** — refresh, open Cursor spending, start with Windows, About, Exit
 
 The number that matters is [Included in Pro](https://cursor.com/dashboard/spending#included-in-pro) on a personal Pro plan with on-demand off. Usage-page token dollars are not a quota. Sign-in is the Cursor session already on this PC; there is no API key to paste.

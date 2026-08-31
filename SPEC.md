@@ -10,7 +10,7 @@ A tiny Windows 10 desktop utility that lives in the **notification area** (syste
 
 The number the user is guarding is the **Included in Pro** percentage on [cursor.com/dashboard/spending#included-in-pro](https://cursor.com/dashboard/spending#included-in-pro). At 100% with on-demand disabled, Cursor rate-limits until the billing cycle resets. The app exists so that percentage is visible without opening a browser.
 
-There is no main window. Left click opens a small dashboard. Right click is a native menu.
+There is no main window. Left click **toggles** a small dashboard. Right click is a native menu.
 
 | Item | Value |
 |---|---|
@@ -130,9 +130,11 @@ Examples:
 
 ### Left click — dashboard
 
-Open the mini-dashboard (or activate it if it is already open). Do not use a balloon for the main fact — the percentage and the two pools need a small window.
+Toggle the mini-dashboard. If it is closed, open it. If it is already open, close it. Do not use a balloon for the main fact — the percentage and the two pools need a small window.
 
-Tray apps keep pumping messages during `ShowDialog`, so a second click would open another copy. Use a single-instance helper (`TrayDialog.ShowOnce`), same idea as Departures About/Settings.
+The same physical click that dismisses the dashboard by stealing focus must not reopen it. Ignore a left click for ~250 ms after the dashboard closes.
+
+Do not open a second copy. Refresh stays on the right-click menu, not on a second left click.
 
 ### Right click — native context menu
 
@@ -156,14 +158,27 @@ No separate Settings window in v1. No flyout *instead of* this menu — the dash
 
 ### Mini-dashboard
 
-A small tool window (`FixedDialog` / `FixedToolWindow`), not in the taskbar, no maximize/minimize. Position it near the tray if practical; if the tray rect is unavailable, center on the working area. Close on Escape and on losing focus (click outside), and from the window’s close box.
+A small tool window (`FixedToolWindow`), not in the taskbar, no maximize/minimize.
+
+Place it next to the pointer **before the first paint** (the tray icon is where the user clicked). Do not show it at (0,0) and then jump. If it would leave the working area, clamp it. If the tray rect is unavailable, the pointer is the fallback.
+
+Close on:
+
+- Escape
+- the window’s close box
+- a second left click on the tray icon
+- losing activation to another window (click outside)
+
+Losing activation does **not** always happen. Clicks on the notification area, another tray icon, or the taskbar often leave this tool window active. That is a Windows limitation, not a second close rule. The tray toggle covers “I clicked the icon again.”
+
+Separate the visual chapters (headline, two pools, sparkline, tokens/on-demand) with one line of empty space (`MessageBox` font height), not a hairline.
 
 Contents, top to bottom — compact, not a website:
 
 1. **Headline:** `Included in Pro` as a large percentage (`totalPercentUsed`, one decimal if < 10%, otherwise whole percent). Subline: plan name (`Pro`) and `Resets {date}` from `billingCycleEnd`.
 2. **Two pool bars:** Cursor Models / Auto (`autoPercentUsed`) and Other Models / API (`apiPercentUsed`). Label them in the user’s language; the values stay `%`.
 3. **The same sparkline as the icon**, larger (recent ~15–20 min burn). Caption: recent included usage. If data may lag, one short line: usage can lag by several minutes.
-4. **Tokens (secondary):** this cycle or this recent window — input / output / cache if the events payload has them. Utilization, not a bill. Do not present a Usage-page dollar total as a limit.
+4. **Tokens (secondary):** heading `Tokens (recent)`, then input, output, and cache each on its own line. Utilization, not a bill. Do not present a Usage-page dollar total as a limit.
 5. **On-demand:** if `onDemand.enabled` is false, a quiet `On-demand off` (no extra charges). If true, a notice that extra spend is possible — still do not build an on-demand dollar product in v1.
 
 A text link **Open spending dashboard** to the same URL as the menu item.
@@ -317,7 +332,7 @@ No administrator rights are required.
 
 - Tray icon: Task Manager-style sparkline of recent included-usage burn; color follows Included in Pro %
 - Tooltip with Included / Auto / API % (truncated to 63 characters)
-- Left click: single-instance mini-dashboard with headline Included %, two pool bars, larger sparkline, secondary tokens, on-demand off/on notice
+- Left click: toggle the mini-dashboard (open if closed, close if open); headline Included %, two pool bars, larger sparkline, secondary tokens, on-demand off/on notice
 - Right click: Refresh, Open Cursor spending, Start with Windows, About, Exit
 - Auth from the local Cursor session; no key in `config.json`
 - Grey signed-out / unreachable states
