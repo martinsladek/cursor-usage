@@ -17,6 +17,7 @@ sealed class TrayApplicationContext : ApplicationContext
     private Form? _about;
     private DashboardForm? _dashboard;
     private bool _refreshing;
+    private DateTime _dashboardClosedUtc = DateTime.MinValue;
 
     public TrayApplicationContext()
     {
@@ -59,18 +60,21 @@ sealed class TrayApplicationContext : ApplicationContext
         if (e.Button != MouseButtons.Left)
             return;
 
-        ShowDashboard();
+        ToggleDashboard();
     }
 
-    private void ShowDashboard()
+    private void ToggleDashboard()
     {
         if (_dashboard is { IsDisposed: false })
         {
-            _dashboard.Apply(_snapshot);
-            TrayDialog.Activate(_dashboard);
-            _ = RefreshAsync();
+            _dashboard.Close();
             return;
         }
+
+        // The same tray click that deactivated the dashboard would otherwise
+        // close it (Deactivate) and immediately open it again (this click).
+        if (DateTime.UtcNow - _dashboardClosedUtc < TimeSpan.FromMilliseconds(250))
+            return;
 
         var form = new DashboardForm();
         form.Apply(_snapshot);
@@ -79,11 +83,15 @@ sealed class TrayApplicationContext : ApplicationContext
         {
             if (ReferenceEquals(_dashboard, form))
                 _dashboard = null;
+            _dashboardClosedUtc = DateTime.UtcNow;
             form.Dispose();
             SetPollInterval();
         };
+        _ = form.Handle;
+        form.PlaceNearPointer();
         form.Show();
-        _ = RefreshAsync();
+        form.Activate();
+        _sync.BeginInvoke(() => _ = RefreshAsync());
     }
 
     private async Task RefreshAsync()
