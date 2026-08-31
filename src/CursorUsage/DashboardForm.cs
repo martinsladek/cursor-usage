@@ -71,9 +71,9 @@ sealed class DashboardForm : Form
         };
 
         _autoLabel = new Label { AutoSize = true, Margin = new Padding(0, chapterGap, 0, 2) };
-        _autoBar = new PercentBar { Height = 10, Margin = new Padding(0, 0, 0, 8), Dock = DockStyle.Top };
+        _autoBar = new PercentBar { Height = 10, Margin = new Padding(0, 0, 0, 8), Dock = DockStyle.Fill };
         _apiLabel = new Label { AutoSize = true, Margin = new Padding(0, 0, 0, 2) };
-        _apiBar = new PercentBar { Height = 10, Margin = new Padding(0, 0, 0, 0), Dock = DockStyle.Top };
+        _apiBar = new PercentBar { Height = 10, Margin = new Padding(0, 0, 0, 0), Dock = DockStyle.Fill };
 
         _sparkCaption = new Label
         {
@@ -81,20 +81,20 @@ sealed class DashboardForm : Form
             AutoSize = true,
             Margin = new Padding(0, chapterGap, 0, 4)
         };
-        _sparkline = new SparklineBox { Height = 48, Margin = new Padding(0, 0, 0, 4), Dock = DockStyle.Top };
+        _sparkline = new SparklineBox { Height = 48, Margin = new Padding(0, 0, 0, 4), Dock = DockStyle.Fill };
         _lag = new Label
         {
             Text = Strings.LagNote,
             AutoSize = true,
             ForeColor = SystemColors.GrayText,
-            Margin = new Padding(0, 0, 0, 0)
+            Margin = new Padding(0, 0, 0, chapterGap)
         };
 
         _tokenCaption = new Label
         {
             Text = Strings.TokensRecent,
             AutoSize = true,
-            Margin = new Padding(0, chapterGap, 0, 4)
+            Margin = new Padding(0, 0, 0, 4)
         };
         _tokenInput = new Label { AutoSize = true, Margin = new Padding(0, 0, 0, 2) };
         _tokenOutput = new Label { AutoSize = true, Margin = new Padding(0, 0, 0, 2) };
@@ -104,14 +104,14 @@ sealed class DashboardForm : Form
         {
             AutoSize = true,
             ForeColor = SystemColors.GrayText,
-            Margin = new Padding(0, 8, 0, 10)
+            Margin = new Padding(0, chapterGap, 0, chapterGap)
         };
 
         var link = new LinkLabel
         {
             Text = Strings.OpenSpendingDashboard,
             AutoSize = true,
-            Margin = new Padding(0, 4, 0, 0)
+            Margin = new Padding(0, 0, 0, 0)
         };
         link.LinkClicked += (_, _) => OpenSpending();
 
@@ -293,7 +293,7 @@ sealed class PercentBar : Control
         {
             int w = (int)Math.Round(Math.Clamp(v, 0, 100) / 100.0 * bounds.Width);
             using var fg = new SolidBrush(Sparkline.QuotaColor(v));
-            e.Graphics.FillRectangle(fg, 0, 0, Math.Max(1, w), bounds.Height);
+            e.Graphics.FillRectangle(fg, bounds.X, bounds.Y, Math.Max(1, w), bounds.Height);
         }
 
         using var pen = new Pen(Color.FromArgb(200, 200, 200));
@@ -332,10 +332,10 @@ sealed class SparklineBox : Control
                 ? Color.White
                 : Sparkline.QuotaColor(_snapshot.TotalPercent);
 
-        var chart = Rectangle.Inflate(bounds, -4, -4);
+        var chart = new Rectangle(0, 3, Math.Max(1, bounds.Width), Math.Max(1, bounds.Height - 6));
         Sparkline.Draw(e.Graphics, chart, _snapshot.Buckets, bars, fillFull: exhausted && !unknown);
 
         using var pen = new Pen(Color.FromArgb(200, 200, 200));
-        e.Graphics.DrawRectangle(pen, 0, 0, Width - 1, Height - 1);
+        e.Graphics.DrawRectangle(pen, 0, 0, Math.Max(0, Width - 1), Math.Max(0, Height - 1));
     }
 }
