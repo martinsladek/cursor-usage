@@ -171,7 +171,7 @@ Close on:
 
 Losing activation does **not** always happen. Clicks on the notification area, another tray icon, or the taskbar often leave this tool window active. That is a Windows limitation, not a second close rule. The tray toggle covers “I clicked the icon again.”
 
-Separate the visual chapters (headline, two pools, sparkline, tokens/on-demand) with one line of empty space (`MessageBox` font height), not a hairline.
+Separate the visual chapters (headline, two pools, sparkline, tokens, on-demand) with one line of empty space (`MessageBox` font height), not a hairline. On-demand uses that same gap before and after.
 
 Contents, top to bottom — compact, not a website:
 
