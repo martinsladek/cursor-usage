@@ -37,7 +37,13 @@ sealed class TrayApplicationContext : ApplicationContext
         _ = _sync.Handle;
 
         _menu = new ContextMenuStrip();
-        _menu.Opening += (_, _) => RebuildMenu();
+        _menu.Opening += (_, e) =>
+        {
+            RebuildMenu();
+            // WinForms cancels Opening when the strip is still empty. The first
+            // right-click after start hits that path and is swallowed.
+            e.Cancel = _menu.Items.Count == 0;
+        };
 
         _notifyIcon = new NotifyIcon
         {
