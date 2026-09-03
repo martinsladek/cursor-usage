@@ -6,6 +6,25 @@ namespace CursorUsage;
 
 static class CursorAuth
 {
+    private static readonly string TempDb = Path.Combine(Path.GetTempPath(), "CursorUsage-state.vscdb");
+
+    /// <summary>Clean up leaked temp files from older versions that used a GUID per read.</summary>
+    public static void CleanupLegacyTempFiles()
+    {
+        try
+        {
+            foreach (string file in Directory.GetFiles(Path.GetTempPath(), "CursorUsage-*.vscdb*"))
+            {
+                if (string.Equals(file, TempDb, StringComparison.OrdinalIgnoreCase)
+                    || string.Equals(file, TempDb + "-wal", StringComparison.OrdinalIgnoreCase)
+                    || string.Equals(file, TempDb + "-shm", StringComparison.OrdinalIgnoreCase))
+                    continue;
+                TryDelete(file);
+            }
+        }
+        catch { }
+    }
+
     public static string? TryReadSessionCookie()
     {
         string? token = TryReadAccessToken();
@@ -44,7 +63,7 @@ static class CursorAuth
         if (!File.Exists(db))
             return null;
 
-        string temp = Path.Combine(Path.GetTempPath(), "CursorUsage-" + Guid.NewGuid().ToString("N") + ".vscdb");
+        string temp = TempDb;
         try
         {
             File.Copy(db, temp, overwrite: true);
@@ -55,7 +74,7 @@ static class CursorAuth
                 catch { }
             }
 
-            using var connection = new SqliteConnection($"Data Source={temp};Mode=ReadOnly");
+            using var connection = new SqliteConnection($"Data Source={temp};Mode=ReadOnly;Pooling=False");
             connection.Open();
             using var command = connection.CreateCommand();
             command.CommandText = "SELECT value FROM ItemTable WHERE key = $key LIMIT 1";
