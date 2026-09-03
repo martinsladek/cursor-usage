@@ -11,6 +11,8 @@ static class Program
         if (!createdNew)
             return;
 
+        CursorAuth.CleanupLegacyTempFiles();
+
         Application.SetHighDpiMode(HighDpiMode.PerMonitorV2);
         Application.EnableVisualStyles();
         Application.SetCompatibleTextRenderingDefault(false);
