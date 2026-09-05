@@ -158,7 +158,7 @@ No separate Settings window in v1. No flyout *instead of* this menu — the dash
 
 ### Mini-dashboard
 
-A small tool window (`FixedToolWindow`), not in the taskbar, no maximize/minimize.
+A small fixed window (`FixedSingle`), not in the taskbar, no maximize/minimize.
 
 Place it next to the pointer **before the first paint** (the tray icon is where the user clicked). Do not show it at (0,0) and then jump. If it would leave the working area, clamp it. If the tray rect is unavailable, the pointer is the fallback.
 

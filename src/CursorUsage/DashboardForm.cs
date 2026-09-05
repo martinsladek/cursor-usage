@@ -24,7 +24,7 @@ sealed class DashboardForm : Form
     public DashboardForm()
     {
         Text = Strings.ProductName;
-        FormBorderStyle = FormBorderStyle.FixedToolWindow;
+        FormBorderStyle = FormBorderStyle.FixedSingle;
         StartPosition = FormStartPosition.Manual;
         MaximizeBox = false;
         MinimizeBox = false;
