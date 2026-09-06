@@ -60,6 +60,10 @@ static class Strings
         en: "Open spending dashboard",
         cs: "Otevřít spending dashboard");
 
+    public static string KeepOpen => L(en: "Keep open", cs: "Nechat otevřené");
+
+    public static string AlwaysOnTop => L(en: "Always on top", cs: "Vždy nahoře");
+
     public static string SignInToCursor => L(en: "Sign in to Cursor", cs: "Přihlaste se do Cursoru");
 
     public static string UsageUnavailable => L(

@@ -1,5 +1,3 @@
-using System.Diagnostics;
-
 namespace CursorUsage;
 
 sealed class TrayApplicationContext : ApplicationContext
@@ -83,6 +81,7 @@ sealed class TrayApplicationContext : ApplicationContext
             return;
 
         var form = new DashboardForm();
+        form.RefreshRequested = () => _ = RefreshAsync();
         form.Apply(_snapshot);
         _dashboard = form;
         form.FormClosed += (_, _) =>
@@ -199,13 +198,6 @@ sealed class TrayApplicationContext : ApplicationContext
     {
         _menu.Items.Clear();
 
-        var refresh = new ToolStripMenuItem(Strings.Refresh, null, (_, _) => _ = RefreshAsync());
-        refresh.Enabled = !_refreshing;
-        _menu.Items.Add(refresh);
-
-        _menu.Items.Add(Strings.OpenCursorSpending, null, (_, _) => OpenSpending());
-        _menu.Items.Add(new ToolStripSeparator());
-
         var autostart = new ToolStripMenuItem(Strings.StartWithWindows)
         {
             Checked = Autostart.IsEnabled,
@@ -245,21 +237,6 @@ sealed class TrayApplicationContext : ApplicationContext
         _notifyIcon.Visible = false;
         Autostart.DeleteInstalledExeAfterThisProcessExits();
         ExitThread();
-    }
-
-    private static void OpenSpending()
-    {
-        try
-        {
-            Process.Start(new ProcessStartInfo
-            {
-                FileName = Strings.SpendingUrl,
-                UseShellExecute = true
-            });
-        }
-        catch
-        {
-        }
     }
 
     protected override void Dispose(bool disposing)

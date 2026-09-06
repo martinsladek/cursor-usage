@@ -19,10 +19,22 @@ sealed class DashboardForm : Form
     private readonly Label _tokenOutput;
     private readonly Label _tokenCache;
     private readonly Label _onDemand;
+    private readonly CheckBox _keepOpen;
+    private readonly CheckBox _alwaysOnTop;
+    private readonly Label _refreshIcon;
+    private readonly Label _included;
+    private readonly TableLayoutPanel _layout;
+    private readonly AppConfig _config;
+    private bool _allowCloseOnDeactivate;
     private bool _closeOnDeactivate;
+    private bool _applyingWindowMode;
+
+    public Action? RefreshRequested { get; set; }
 
     public DashboardForm()
     {
+        _config = AppConfig.Load();
+
         Text = Strings.ProductName;
         FormBorderStyle = FormBorderStyle.FixedSingle;
         StartPosition = FormStartPosition.Manual;
@@ -32,21 +44,21 @@ sealed class DashboardForm : Form
         ShowIcon = false;
         AutoScaleMode = AutoScaleMode.Font;
         Font = SystemFonts.MessageBoxFont;
-        ClientSize = new Size(320, 470);
+        ClientSize = new Size(320, 510);
         KeyPreview = true;
         BackColor = SystemColors.Window;
         Location = new Point(-32000, -32000);
 
         int chapterGap = Math.Max(16, Font.Height);
 
-        var layout = new TableLayoutPanel
+        _layout = new TableLayoutPanel
         {
             Dock = DockStyle.Fill,
             ColumnCount = 1,
-            RowCount = 16,
+            RowCount = 18,
             Padding = new Padding(16, 14, 16, 12)
         };
-        layout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
+        _layout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
 
         _headline = new Label
         {
@@ -55,13 +67,16 @@ sealed class DashboardForm : Form
             Margin = new Padding(0, 0, 0, 2)
         };
 
-        var included = new Label
+        _included = new Label
         {
             Text = Strings.IncludedInPro,
             AutoSize = true,
             ForeColor = SystemColors.GrayText,
             Margin = new Padding(0, 0, 0, 2)
         };
+
+        _refreshIcon = CreateRefreshIcon();
+        _refreshIcon.Click += (_, _) => RefreshRequested?.Invoke();
 
         _subline = new Label
         {
@@ -115,24 +130,60 @@ sealed class DashboardForm : Form
         };
         link.LinkClicked += (_, _) => OpenSpending();
 
-        layout.Controls.Add(included, 0, 0);
-        layout.Controls.Add(_headline, 0, 1);
-        layout.Controls.Add(_subline, 0, 2);
-        layout.Controls.Add(_autoLabel, 0, 3);
-        layout.Controls.Add(_autoBar, 0, 4);
-        layout.Controls.Add(_apiLabel, 0, 5);
-        layout.Controls.Add(_apiBar, 0, 6);
-        layout.Controls.Add(_sparkCaption, 0, 7);
-        layout.Controls.Add(_sparkline, 0, 8);
-        layout.Controls.Add(_lag, 0, 9);
-        layout.Controls.Add(_tokenCaption, 0, 10);
-        layout.Controls.Add(_tokenInput, 0, 11);
-        layout.Controls.Add(_tokenOutput, 0, 12);
-        layout.Controls.Add(_tokenCache, 0, 13);
-        layout.Controls.Add(_onDemand, 0, 14);
-        layout.Controls.Add(link, 0, 15);
+        _keepOpen = new CheckBox
+        {
+            Text = Strings.KeepOpen,
+            AutoSize = true,
+            Checked = _config.KeepOpen,
+            Margin = new Padding(0, chapterGap, 0, 2)
+        };
+        _keepOpen.CheckedChanged += (_, _) =>
+        {
+            _config.KeepOpen = _keepOpen.Checked;
+            _config.Save();
+            ApplyWindowMode();
+        };
 
-        Controls.Add(layout);
+        _alwaysOnTop = new CheckBox
+        {
+            Text = Strings.AlwaysOnTop,
+            AutoSize = true,
+            Checked = _config.AlwaysOnTop,
+            Margin = new Padding(0, 0, 0, 0)
+        };
+        _alwaysOnTop.CheckedChanged += (_, _) =>
+        {
+            _config.AlwaysOnTop = _alwaysOnTop.Checked;
+            _config.Save();
+            ApplyWindowMode();
+        };
+
+        _layout.Controls.Add(_included, 0, 0);
+        _layout.Controls.Add(_headline, 0, 1);
+        _layout.Controls.Add(_subline, 0, 2);
+        _layout.Controls.Add(_autoLabel, 0, 3);
+        _layout.Controls.Add(_autoBar, 0, 4);
+        _layout.Controls.Add(_apiLabel, 0, 5);
+        _layout.Controls.Add(_apiBar, 0, 6);
+        _layout.Controls.Add(_sparkCaption, 0, 7);
+        _layout.Controls.Add(_sparkline, 0, 8);
+        _layout.Controls.Add(_lag, 0, 9);
+        _layout.Controls.Add(_tokenCaption, 0, 10);
+        _layout.Controls.Add(_tokenInput, 0, 11);
+        _layout.Controls.Add(_tokenOutput, 0, 12);
+        _layout.Controls.Add(_tokenCache, 0, 13);
+        _layout.Controls.Add(_onDemand, 0, 14);
+        _layout.Controls.Add(link, 0, 15);
+        _layout.Controls.Add(_keepOpen, 0, 16);
+        _layout.Controls.Add(_alwaysOnTop, 0, 17);
+
+        Controls.Add(_layout);
+        Controls.Add(_refreshIcon);
+        _refreshIcon.BringToFront();
+        PositionRefreshIcon();
+        Resize += (_, _) => PositionRefreshIcon();
+
+        ApplyWindowMode();
 
         KeyDown += (_, e) =>
         {
@@ -142,14 +193,97 @@ sealed class DashboardForm : Form
 
         Shown += (_, _) =>
         {
-            BeginInvoke(() => _closeOnDeactivate = true);
+            BeginInvoke(() =>
+            {
+                PositionRefreshIcon();
+                _allowCloseOnDeactivate = true;
+                ApplyWindowMode();
+            });
         };
 
         Deactivate += (_, _) =>
         {
-            if (_closeOnDeactivate)
-                Close();
+            if (_applyingWindowMode || !_closeOnDeactivate)
+                return;
+            Close();
         };
+    }
+
+    private void ApplyWindowMode()
+    {
+        if (IsDisposed)
+            return;
+
+        bool keepOpen = _keepOpen.Checked;
+        _alwaysOnTop.Enabled = keepOpen;
+
+        // ShowInTaskbar recreates the HWND (brief blink) but is the only reliable
+        // way to get a taskbar button without closing/reopening the form.
+        _applyingWindowMode = true;
+        try
+        {
+            if (ShowInTaskbar != keepOpen)
+                ShowInTaskbar = keepOpen;
+            if (!IsDisposed)
+                TopMost = keepOpen && _alwaysOnTop.Checked;
+        }
+        finally
+        {
+            _applyingWindowMode = false;
+            if (!IsDisposed)
+                _closeOnDeactivate = _allowCloseOnDeactivate && !keepOpen;
+        }
+    }
+
+    private void PositionRefreshIcon()
+    {
+        if (!_included.IsHandleCreated)
+            return;
+
+        // Align the glyph with the caption top — not a guessed padY.
+        Point caption = _layout.PointToScreen(_included.Location);
+        Point onForm = PointToClient(caption);
+        _refreshIcon.Location = new Point(
+            ClientSize.Width - _refreshIcon.Width - _layout.Padding.Right,
+            onForm.Y);
+    }
+
+    private Label CreateRefreshIcon()
+    {
+        Font iconFont;
+        string glyph;
+        try
+        {
+            iconFont = new Font("Segoe MDL2 Assets", 12f);
+            glyph = "\uE72C"; // Refresh
+        }
+        catch
+        {
+            iconFont = new Font(Font.FontFamily, 14f);
+            glyph = "⟳";
+        }
+
+        var icon = new Label
+        {
+            Text = glyph,
+            Font = iconFont,
+            AutoSize = false,
+            Size = new Size(28, 28),
+            TextAlign = ContentAlignment.MiddleCenter,
+            Margin = Padding.Empty,
+            Padding = Padding.Empty,
+            Cursor = Cursors.Hand,
+            ForeColor = SystemColors.GrayText,
+            BackColor = Color.Transparent,
+            TabStop = false,
+            AccessibleName = Strings.Refresh
+        };
+        icon.MouseEnter += (_, _) => icon.BackColor = Color.FromArgb(230, 230, 230);
+        icon.MouseLeave += (_, _) => icon.BackColor = Color.Transparent;
+
+        var tip = new ToolTip();
+        tip.SetToolTip(icon, Strings.Refresh);
+        return icon;
     }
 
     public void Apply(UsageSnapshot snapshot)

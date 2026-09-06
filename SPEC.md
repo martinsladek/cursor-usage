@@ -134,31 +134,28 @@ Toggle the mini-dashboard. If it is closed, open it. If it is already open, clos
 
 The same physical click that dismisses the dashboard by stealing focus must not reopen it. Ignore a left click for ~250 ms after the dashboard closes.
 
-Do not open a second copy. Refresh stays on the right-click menu, not on a second left click.
+Do not open a second copy. Refresh is on the dashboard (top-right icon), not a second left click and not on the tray menu.
 
 ### Right click — native context menu
 
 ```
-   Refresh
-   Open Cursor spending
-─────────────────
    Start with Windows  ✓
 ─────────────────
    About
    Exit
 ```
 
-- **Refresh** — fetch now; ignore if a fetch is already running.
-- **Open Cursor spending** — `https://cursor.com/dashboard/spending#included-in-pro` in the default browser.
 - **Start with Windows** — checkable; see Autostart. Read live registry state when the menu opens.
 - **About** immediately above **Exit**. Opening About again activates the existing dialog.
 - **Exit** hides the tray icon and quits.
+
+Refresh and spending live on the dashboard (not this menu). Polling still updates the tray icon while the dashboard is closed.
 
 No separate Settings window in v1. No flyout *instead of* this menu — the dashboard is left click only.
 
 ### Mini-dashboard
 
-A small fixed window (`FixedSingle`), not in the taskbar, no maximize/minimize.
+A small fixed window (`FixedSingle`), no maximize/minimize. By default it is not in the taskbar. When **Keep open** is checked, it appears on the taskbar so it can be found via Alt+Tab.
 
 Place it next to the pointer **before the first paint** (the tray icon is where the user clicked). Do not show it at (0,0) and then jump. If it would leave the working area, clamp it. If the tray rect is unavailable, the pointer is the fallback.
 
@@ -167,21 +164,26 @@ Close on:
 - Escape
 - the window’s close box
 - a second left click on the tray icon
-- losing activation to another window (click outside)
+- losing activation to another window (click outside), **unless Keep open is checked**
 
-Losing activation does **not** always happen. Clicks on the notification area, another tray icon, or the taskbar often leave this tool window active. That is a Windows limitation, not a second close rule. The tray toggle covers “I clicked the icon again.”
+Two checkboxes at the bottom of the dashboard (persisted in `config.json`):
+
+- **Keep open** — do not close on deactivate; show in the taskbar (toggling may briefly recreate the window chrome; that is how WinForms applies `ShowInTaskbar`).
+- **Always on top** — `TopMost`; only available while Keep open is checked; default off.
+
+Losing activation does **not** always happen. Clicks on the notification area, another tray icon, or the taskbar often leave this window active. That is a Windows limitation, not a second close rule. The tray toggle covers “I clicked the icon again.”
 
 Separate the visual chapters (headline, two pools, sparkline, tokens, on-demand) with one line of empty space (`MessageBox` font height), not a hairline. On-demand uses that same gap before and after.
 
 Contents, top to bottom — compact, not a website:
 
-1. **Headline:** `Included in Pro` as a large percentage (`totalPercentUsed`, one decimal if < 10%, otherwise whole percent). Subline: plan name (`Pro`) and `Resets {date}` from `billingCycleEnd`.
-2. **Two pool bars:** Cursor Models / Auto (`autoPercentUsed`) and Other Models / API (`apiPercentUsed`). Label them in the user’s language; the values stay `%`.
-3. **The same sparkline as the icon**, larger (recent ~15–20 min burn). Caption: recent included usage. If data may lag, one short line: usage can lag by several minutes.
-4. **Tokens (secondary):** heading `Tokens (recent)`, then input, output, and cache each on its own line. Utilization, not a bill. Do not present a Usage-page dollar total as a limit.
-5. **On-demand:** if `onDemand.enabled` is false, a quiet `On-demand off` (no extra charges). If true, a notice that extra spend is possible — still do not build an on-demand dollar product in v1.
-
-A text link **Open spending dashboard** to the same URL as the menu item.
+1. **Header:** `Included in Pro` on the left; a refresh control on the right (Segoe MDL2 refresh glyph, or a readable fallback).
+2. **Headline:** large Included percentage (`totalPercentUsed`, one decimal if < 10%, otherwise whole percent). Subline: plan name (`Pro`) and `Resets {date}` from `billingCycleEnd`.
+3. **Two pool bars:** Cursor Models / Auto (`autoPercentUsed`) and Other Models / API (`apiPercentUsed`). Label them in the user’s language; the values stay `%`.
+4. **The same sparkline as the icon**, larger (recent ~15–20 min burn). Caption: recent included usage. If data may lag, one short line: usage can lag by several minutes.
+5. **Tokens (secondary):** heading `Tokens (recent)`, then input, output, and cache each on its own line. Utilization, not a bill. Do not present a Usage-page dollar total as a limit.
+6. **On-demand:** if `onDemand.enabled` is false, a quiet `On-demand off` (no extra charges). If true, a notice that extra spend is possible — still do not build an on-demand dollar product in v1.
+7. **Open spending dashboard** link, then **Keep open** and **Always on top**. A top-right refresh icon (Segoe MDL2 glyph, centered in its hit target) refreshes usage.
 
 No day-by-day history chart in v1. No CSV export.
 
@@ -220,7 +222,7 @@ Any other Windows language falls back to English. Product name stays English. RE
 %LocalAppData%\CursorUsage\cache\
 ```
 
-`config.json` in v1 may be empty `{}` or hold only non-secret preferences later. Do not store session cookies, JWTs, or API keys.
+`config.json` holds non-secret preferences (`keepOpen`, `alwaysOnTop`). Do not store session cookies, JWTs, or API keys.
 
 The event cache is not config. It may be deleted; the next fetch rebuilds it.
 
@@ -333,7 +335,7 @@ No administrator rights are required.
 - Tray icon: Task Manager-style sparkline of recent included-usage burn; color follows Included in Pro %
 - Tooltip with Included / Auto / API % (truncated to 63 characters)
 - Left click: toggle the mini-dashboard (open if closed, close if open); headline Included %, two pool bars, larger sparkline, secondary tokens, on-demand off/on notice
-- Right click: Refresh, Open Cursor spending, Start with Windows, About, Exit
+- Right click: Start with Windows, About, Exit
 - Auth from the local Cursor session; no key in `config.json`
 - Grey signed-out / unreachable states
 - About dialog with website and GitHub

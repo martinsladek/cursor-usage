@@ -10,6 +10,10 @@ sealed class AppConfig
         WriteIndented = true
     };
 
+    public bool KeepOpen { get; set; }
+
+    public bool AlwaysOnTop { get; set; }
+
     public static AppConfig Load()
     {
         try
