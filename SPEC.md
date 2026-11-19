@@ -53,10 +53,10 @@ No API key in Settings. No cookie pasted as the normal path.
 Read the session Cursor already has:
 
 - `%APPDATA%\Cursor\User\globalStorage\state.vscdb`
-- `ItemTable` key `cursorAuth/accessToken` (a WorkOS JWT)
+- `ItemTable` key `cursorAuth/accessToken` (a WorkOS JWT). Newer Cursor may store it as `cursor-safe-storage:v1:` plus base64 of a Chromium `v10` AES-256-GCM blob; decrypt with the key from `%APPDATA%\Cursor\Local State` → `os_crypt.encrypted_key` (DPAPI on Windows). Plaintext JWTs remain valid.
 - Cookie `WorkosCursorSessionToken` = `{jwt.sub}%3A%3A{accessToken}` (the `::` is URL-encoded)
 
-Do **not** copy that token into `config.json`. Read it when a request is made. If the file is missing, locked, or the JWT is expired: grey icon, tooltip and balloon tell the user to sign in to Cursor.
+Do **not** copy that token into `config.json`. Decrypt only in memory when a request is made. If the file is missing, locked, or the JWT is expired: grey icon, tooltip and balloon tell the user to sign in to Cursor.
 
 POST calls to `cursor.com` need `Origin: https://cursor.com` (CSRF). GET `usage-summary` does not.
 
